@@ -5,6 +5,7 @@ import com.nowakowski.bartlomiej.budget.assistant.entity.Budget;
 import com.nowakowski.bartlomiej.budget.assistant.entity.Register;
 import com.nowakowski.bartlomiej.budget.assistant.entity.RegisterType;
 import com.nowakowski.bartlomiej.budget.assistant.repository.BudgetRepository;
+import com.nowakowski.bartlomiej.budget.assistant.repository.RegisterRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -19,14 +20,16 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
-public class RegisterServiceTest {
+public class BudgetServiceTest {
 
     @Mock
     public BudgetRepository budgetRepository;
+
+    @Mock
+    public RegisterRepository registerRepository;
 
     @InjectMocks
     public BudgetService systemUnderTest;
@@ -34,10 +37,13 @@ public class RegisterServiceTest {
     @Captor
     public ArgumentCaptor<Budget> budgetCaptor;
 
-    public static final Double ANY_WALLET_AMOUNT = 1.0;
-    public static final Double ANY_SAVINGS_AMOUNT = 2.0;
-    public static final Double ANY_INSURANCE_POLICY_AMOUNT = 3.0;
-    public static final Double ANY_FOOD_EXPENSES_AMOUNT = 4.0;
+    @Captor
+    public ArgumentCaptor<Register> registerCaptor;
+
+    public static final Double ANY_WALLET_AMOUNT = 100.0;
+    public static final Double ANY_SAVINGS_AMOUNT = 200.0;
+    public static final Double ANY_INSURANCE_POLICY_AMOUNT = 300.0;
+    public static final Double ANY_FOOD_EXPENSES_AMOUNT = 400.0;
 
     @Test
     public void shouldRechargeWallet() {
@@ -88,6 +94,46 @@ public class RegisterServiceTest {
 
         assertEquals(HttpStatus.NOT_FOUND, exception.getStatus());
         assertEquals("No budget defined", exception.getReason());
+    }
+
+    @Test
+    public void shouldTransferWhenExactlyAllFunds() {
+        List<Budget> budget = prepareBudget();
+        when(budgetRepository.findAll()).thenReturn(budget);
+
+        systemUnderTest.transfer(100.0, RegisterType.WALLET, RegisterType.SAVINGS);
+
+        verify(registerRepository, times(2)).save(registerCaptor.capture());
+        assertEquals(RegisterType.WALLET, registerCaptor.getAllValues().get(0).getType());
+        assertEquals(0.0, registerCaptor.getAllValues().get(0).getValue());
+        assertEquals(RegisterType.SAVINGS, registerCaptor.getAllValues().get(1).getType());
+        assertEquals(300.0, registerCaptor.getAllValues().get(1).getValue());
+    }
+
+    @Test
+    public void shouldNotTransferWhenMissingFunds() {
+        List<Budget> budget = prepareBudget();
+        when(budgetRepository.findAll()).thenReturn(budget);
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class,
+                () -> systemUnderTest.transfer(101.0, RegisterType.WALLET, RegisterType.SAVINGS));
+
+        assertEquals(HttpStatus.BAD_REQUEST, exception.getStatus());
+        assertEquals("No enough money to transfer", exception.getReason());
+    }
+
+    @Test
+    public void shouldTransferWhenEnoughFundsó() {
+        List<Budget> budget = prepareBudget();
+        when(budgetRepository.findAll()).thenReturn(budget);
+
+        systemUnderTest.transfer(50.0, RegisterType.WALLET, RegisterType.SAVINGS);
+
+        verify(registerRepository, times(2)).save(registerCaptor.capture());
+        assertEquals(RegisterType.WALLET, registerCaptor.getAllValues().get(0).getType());
+        assertEquals(50.0, registerCaptor.getAllValues().get(0).getValue());
+        assertEquals(RegisterType.SAVINGS, registerCaptor.getAllValues().get(1).getType());
+        assertEquals(250.0, registerCaptor.getAllValues().get(1).getValue());
     }
 
     private List<Budget> prepareBudget() {

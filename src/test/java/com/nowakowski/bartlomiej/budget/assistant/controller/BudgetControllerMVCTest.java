@@ -11,9 +11,10 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.server.ResponseStatusException;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(SpringExtension.class)
@@ -28,9 +29,9 @@ public class BudgetControllerMVCTest {
 
     @Test
     void shouldRechargeWalletAndGet200WhenCorrectAmount() throws Exception {
-        double anyCorrectAmount = 10.0;
+        Double anyCorrectAmount = 10.0;
 
-        mockMvc.perform(post("/budget/assistant/" + anyCorrectAmount)
+        mockMvc.perform(post("/budget/assistant/recharge/" + anyCorrectAmount)
                 .contentType("application/json"))
                 .andExpect(status().isOk());
     }
@@ -39,7 +40,7 @@ public class BudgetControllerMVCTest {
     void shouldNotRechargeWalletAndGet400WhenNegativeAmount() throws Exception {
         double anyIncorrectAmount = -10.0;
 
-        mockMvc.perform(post("/budget/assistant/" + anyIncorrectAmount)
+        mockMvc.perform(post("/budget/assistant/recharge/" + anyIncorrectAmount)
                 .contentType("application/json"))
                 .andExpect(status().isBadRequest());
     }
@@ -50,7 +51,7 @@ public class BudgetControllerMVCTest {
         doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "No budget defined"))
                 .when(budgetService).recharge(anyCorrectAmount);
 
-        mockMvc.perform(post("/budget/assistant/" + anyCorrectAmount)
+        mockMvc.perform(post("/budget/assistant/recharge/" + anyCorrectAmount)
                 .contentType("application/json"))
                 .andExpect(status().isNotFound());
     }
@@ -70,5 +71,34 @@ public class BudgetControllerMVCTest {
         mockMvc.perform(get("/budget/assistant")
                 .contentType("application/json"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldTransferAndGet200WhenCorrectAmount() throws Exception {
+        double anyCorrectAmount = 10.0;
+
+        mockMvc.perform(post("/budget/assistant/transfer/" + anyCorrectAmount + "?from=WALLET&to=SAVINGS")
+                .contentType("application/json"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldNotTransferAndGet400WhenNegativeAmount() throws Exception {
+        double anyIncorrectAmount = -10.0;
+
+        mockMvc.perform(post("/budget/assistant/transfer/" + anyIncorrectAmount + "?from=WALLET&to=SAVINGS")
+                .contentType("application/json"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void shouldNotTransferAndGet404WhenNotEnoughFunds() throws Exception {
+        double anyIncorrectAmount = 10.0;
+        doThrow(new ResponseStatusException(HttpStatus.BAD_REQUEST, "No enough money to transfer"))
+                .when(budgetService).transfer(any(), any(), any());
+
+        mockMvc.perform(post("/budget/assistant/transfer/" + anyIncorrectAmount + "?from=WALLET&to=SAVINGS")
+                .contentType("application/json"))
+                .andExpect(status().isBadRequest());
     }
 }
