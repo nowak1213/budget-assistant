@@ -13,6 +13,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(SpringExtension.class)
@@ -50,6 +51,23 @@ public class BudgetControllerMVCTest {
                 .when(budgetService).recharge(anyCorrectAmount);
 
         mockMvc.perform(post("/budget/assistant/" + anyCorrectAmount)
+                .contentType("application/json"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shouldGetBalanceAndGet200() throws Exception {
+        mockMvc.perform(get("/budget/assistant")
+                .contentType("application/json"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldGetBalanceAndGet404WhenNoBudget() throws Exception {
+        doThrow(new ResponseStatusException(HttpStatus.NOT_FOUND, "No budget defined"))
+                .when(budgetService).getBalance();
+
+        mockMvc.perform(get("/budget/assistant")
                 .contentType("application/json"))
                 .andExpect(status().isNotFound());
     }

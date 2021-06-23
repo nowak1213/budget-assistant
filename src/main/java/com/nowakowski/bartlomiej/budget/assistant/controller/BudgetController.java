@@ -1,12 +1,10 @@
 package com.nowakowski.bartlomiej.budget.assistant.controller;
 
+import com.nowakowski.bartlomiej.budget.assistant.BudgetDTO;
 import com.nowakowski.bartlomiej.budget.assistant.service.BudgetService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("budget/assistant")
@@ -22,6 +20,12 @@ public class BudgetController {
         }
         budgetService.recharge(amount);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping
+    public ResponseEntity<BudgetDTO> getBalance() {
+        BudgetDTO result = budgetService.getBalance();
+        return ResponseEntity.ok().body(result);
     }
 
     private boolean isNegativeNumber(Double amount) {
