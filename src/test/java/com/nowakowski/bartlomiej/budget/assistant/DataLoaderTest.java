@@ -3,26 +3,48 @@ package com.nowakowski.bartlomiej.budget.assistant;
 import com.nowakowski.bartlomiej.budget.assistant.entity.Budget;
 import com.nowakowski.bartlomiej.budget.assistant.repository.BudgetRepository;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.boot.ApplicationArguments;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-
+import static com.nowakowski.bartlomiej.budget.assistant.DataLoader.*;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.*;
 
-@SpringBootTest
+@ExtendWith(MockitoExtension.class)
 public class DataLoaderTest {
 
-    @Autowired
+    @Mock
     public BudgetRepository budgetRepository;
 
-    @Test
-    public void testInitBudgetRepo () {
-        Budget initialBudget = budgetRepository.findById(1L).get();
+    @InjectMocks
+    public DataLoader systemUnderTest;
 
-        assertEquals(1, budgetRepository.count());
-        assertEquals(1000.0, initialBudget.getWallet().getValue());
-        assertEquals(5000.0, initialBudget.getSavings().getValue());
-        assertEquals(0.0, initialBudget.getInsurancePolicy().getValue());
-        assertEquals(0.0, initialBudget.getFoodExpenses().getValue());
+    @Captor
+    public ArgumentCaptor<Budget> budgetCaptor;
+
+    @Test
+    public void shouldSaveInitialBudget() {
+        systemUnderTest.run(mock(ApplicationArguments.class));
+
+        verify(budgetRepository).save(budgetCaptor.capture());
+        Budget rechargedBudget = budgetCaptor.getValue();
+        assertEquals(INITIAL_WALLET_VALUE, rechargedBudget.getWallet().getValue());
+        assertEquals(INITIAL_SAVINGS_VALUE, rechargedBudget.getSavings().getValue());
+        assertEquals(INITIAL_INSURANCE_POLICY_VALUE, rechargedBudget.getInsurancePolicy().getValue());
+        assertEquals(INITIAL_FOOD_EXPENSES_VALUE, rechargedBudget.getFoodExpenses().getValue());
+    }
+
+    @Test
+    public void shouldNotSaveInitialBudget() {
+        when(budgetRepository.count()).thenReturn(1L);
+
+        systemUnderTest.run(mock(ApplicationArguments.class));
+
+        verify(budgetRepository, times(0)).save(any());
     }
 }
